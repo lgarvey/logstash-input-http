@@ -60,11 +60,8 @@ class LogStash::Inputs::Http < LogStash::Inputs::Base
   # Maximum number of threads to use
   config :threads, :validate => :number, :default => 4
 
-  # Username for basic authorization
-  config :user, :validate => :string, :required => false
-
-  # Password for basic authorization
-  config :password, :validate => :password, :required => false
+  # Multiple user/pass http auth hash
+  config :users, :validate => :hash, :default => {}
 
   # SSL Configurations
   #
@@ -96,10 +93,7 @@ class LogStash::Inputs::Http < LogStash::Inputs::Base
   def register
     require "logstash/util/http_compressed_requests"
     @server = ::HTTPInputWebServer.new(nil) # we'll set the rack handler later
-    if @user && @password then
-      token = Base64.strict_encode64("#{@user}:#{@password.value}")
-      @auth_token = "Basic #{token}"
-    end
+
     if @ssl
       if @keystore.nil? || @keystore_password.nil?
         raise(LogStash::ConfigurationError, "Settings :keystore and :keystore_password are required because :ssl is enabled.")
@@ -157,8 +151,8 @@ class LogStash::Inputs::Http < LogStash::Inputs::Base
     end
 
     auth = Proc.new do |username, password|
-      username == @user && password == @password.value
-    end if (@user && @password)
+      @users.key?(username) && @users[username] == password
+    end unless @users.empty?
 
     @server.app = Rack::Builder.new do
       use(Rack::Auth::Basic, &auth) if auth

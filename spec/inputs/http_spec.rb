@@ -144,9 +144,12 @@ describe LogStash::Inputs::Http do
       end
     end
     describe "basic auth" do
-      user = "test"; password = "pwd"
-      subject { LogStash::Inputs::Http.new("port" => port, "user" => user, "password" => password) }
-      let(:auth_token) { Base64.strict_encode64("#{user}:#{password}") }
+      users = {
+        "app1" => "pass1",
+        "app2" => "pass2"
+      }
+      subject { LogStash::Inputs::Http.new("port" => port, "users" => users) }
+      let(:auth_token) { Base64.strict_encode64("app1:pass1") }
       context "when client doesn't present auth token" do
         let!(:response) { agent.post!("http://localhost:#{port}/meh", :body => "hi") }
         it "should respond with 401" do
